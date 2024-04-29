@@ -3,6 +3,7 @@
 #include<unordered_map>
 #include<cstring>
 #include<string>
+#include<algorithm>
 using namespace std;
 unordered_map<size_t,bool> hashTBProcedure;
 unordered_map<size_t,int>hashTBMax;
@@ -15,15 +16,23 @@ int DynprogMax(vector<int>Sequence){
     if(Sequence.size()==0)return guarantee;
     int x=Sequence[(int)Sequence.size()-1];
     Sequence.pop_back();
-    
+    int V=x;
 	size_t seed = 0;
     for (int i : Sequence) {
         seed ^= hasher(i) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        V+=i;
     }
-    int mxGuar=hashTBMax[seed];
+    int mxGuar=min(hashTBMax[seed],2*guarantee-V);
 
     Sequence.push_back(x);
     seed^=hasher(x) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+    int LB=0,l=0,r=0;
+    for(int i:Sequence){
+        if(r+i<=guarantee)r+=i;
+        else l+=i;
+        if(l>r)swap(l,r);
+    }
+    LB=max(l,r);
     if(hashTBMax.count(seed))return hashTBMax[seed];
 
 
@@ -31,7 +40,7 @@ int DynprogMax(vector<int>Sequence){
     int cur=1;
     int sum=0;
     dp[0][0]=1;
-    for(int g=mxGuar;g>=1;g--){
+    for(int g=mxGuar;g>=LB;g--){
         Sequence.push_back(g);
         for(int i=0;i<Sequence.size();i++){
             memset(dp[cur],0,sizeof(dp[cur]));
@@ -83,6 +92,18 @@ bool EvaluateAlgorithm(vector<int>Machine,vector<int>Sequence,int t,int u){
     }
     return false;
 }
+bool EvaluateAlgorithmUntested(vector<int>Machine,vector<int>Sequence,int t,int u){
+    for(int i=0;i<2;i++){//tested
+        if(Machine[i]+u<target){
+            vector<int> tmpMachine=Machine;
+            tmpMachine[i]=Machine[i]+u;
+            vector<int> tmpSequence=Sequence;
+            tmpSequence.push_back(t);
+            if(EvaluateAdversary(tmpMachine,tmpSequence))return true;
+        }
+    }
+    return false;
+}
 bool EvaluateAdversary(vector<int>Machine,vector<int>Sequence){
     
     
@@ -103,6 +124,14 @@ bool EvaluateAdversary(vector<int>Machine,vector<int>Sequence){
             }
         }
     }
+    for(int u=g+1;u<=(target-1-min(Machine[0],Machine[1]));u++){
+        for(int t=1;t<=g;t++){
+            if(!EvaluateAlgorithmUntested(Machine,Sequence,t,u)){
+				hashTBProcedure[seed]=false;
+                return false;
+            }
+        }
+    }
 	hashTBProcedure[seed]=true;
     return true;
 }
@@ -116,13 +145,12 @@ bool RunProcedure(int _t,int _g){
     initMachine.clear(),initSequence.clear();
     initMachine.push_back(0);
     initMachine.push_back(0);
-    cout<<_g<<" "<<_t<<endl;
     return !EvaluateAdversary(initMachine,initSequence);
 }
 int main(int, char**){
 //    freopen("test.out","w",stdout);
-    for(int g=18;g<=20;g++){
-        for(int t=g*FormerCompetitiveRatio+1;t<=2.5*g;t++){
+    for(int g=20;g<=20;g++){
+        for(int t=g+1;t<=3*g;t++){
             if(RunProcedure(t,g))cout<<"g: "<<g<<"t: "<<t<<endl;
         }
     }
